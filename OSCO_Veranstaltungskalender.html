@@ -87,6 +87,13 @@
   .help-slot { border: 1.5px dashed var(--warn); background: #fff8ee; border-radius: 6px; padding: 7px 10px; font-size: 0.85rem; color: var(--warn); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.15s; }
   .help-slot:hover { background: #fff0da; }
 
+  /* Helfer-Zeile im Bearbeitungsmodus */
+  .team-member-edit { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 6px; background: #f5f0e8; font-size: 0.88rem; margin-bottom: 6px; }
+  .team-member-edit input { flex: 1; padding: 5px 8px; border: 1.5px solid var(--border); border-radius: 4px; font-family: 'Instrument Sans', sans-serif; font-size: 0.82rem; background: white; min-width: 0; }
+  .team-member-edit input:focus { outline: none; border-color: var(--accent3); }
+  .btn-delete-helper { width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid #e8d0cc; background: transparent; color: var(--accent); cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
+  .btn-delete-helper:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
   .form-group { margin-bottom: 14px; }
   .form-label { display: block; font-size: 0.78rem; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-light); margin-bottom: 5px; }
   .form-input, .form-select, .form-textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 5px; background: white; font-family: 'Instrument Sans', sans-serif; font-size: 0.9rem; color: var(--ink); transition: border-color 0.15s; }
@@ -129,11 +136,11 @@
 </div>
 
 <header>
-  <img src="osco_logo.png" 
-     alt="OSCO Logo" 
-     style="height:48px; width:auto; margin-right:8px;">
+  <img src="osco_logo.png"
+       alt="OSCO Logo"
+       style="height:48px; width:auto; margin-right:8px;">
   <div>
-    <h1>OSCO</span></h1>
+    <h1>OSCO</h1>
     <div class="subtitle">Veranstaltungskalender</div>
   </div>
   <div class="header-nav">
@@ -308,6 +315,14 @@
       <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
       <div class="form-group"><label class="form-label">Hilfe gesucht — Aufgaben (eine pro Zeile)</label><textarea class="form-textarea" id="editHelpRoles" style="min-height:80px"></textarea></div>
       <div class="form-group"><label class="form-label">Bemerkungen / Offene Fragen</label><textarea class="form-textarea" id="editNotes"></textarea></div>
+      <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
+      <div class="detail-label" style="margin-bottom:10px">Eingetragene Helfer:innen</div>
+      <div id="editHelperList"></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <input class="form-input" id="editNewHelperName" placeholder="Name" style="flex:1">
+        <input class="form-input" id="editNewHelperRole" placeholder="Aufgabe" style="flex:1">
+        <button class="btn btn-ghost" onclick="addHelperInEdit()" style="white-space:nowrap">+ Hinzufügen</button>
+      </div>
       <div class="form-actions">
         <button class="btn btn-primary" onclick="saveEditedEvent()" style="flex:1">Änderungen speichern</button>
         <button class="btn btn-ghost" onclick="closeModal('editEventModal')">Abbrechen</button>
@@ -335,15 +350,9 @@
 <script>
 // ============================================================
 //  OSCO Hannover – Kalender · Supabase Edition
-//  Alle Daten werden direkt in Supabase gespeichert.
-//  Kein Google-Konto, kein Apps Script nötig.
 // ============================================================
 const SUPABASE_URL = 'https://mwpgdwtfgebzclaacvfn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-ewEC5dX101HMjaPmnXsrg_NYwzWBIE';
-// ============================================================
-//  Passwort für Bearbeiten & Löschen.
-//  Ändert diesen Wert und ladet die Datei neu auf GitHub hoch:
-// ============================================================
 const ADMIN_PASSWORD = 'OSCO0815';
 // ============================================================
 
@@ -372,27 +381,18 @@ async function sbGet(table, params = '') {
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 async function sbPost(table, body) {
-  const res = await fetch(`${API}/${table}`, {
-    method: 'POST', headers: HEADERS, body: JSON.stringify(body)
-  });
+  const res = await fetch(`${API}/${table}`, { method: 'POST', headers: HEADERS, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 async function sbPatch(table, id, body) {
-  const res = await fetch(`${API}/${table}?id=eq.${id}`, {
-    method: 'PATCH', headers: HEADERS, body: JSON.stringify(body)
-  });
+  const res = await fetch(`${API}/${table}?id=eq.${id}`, { method: 'PATCH', headers: HEADERS, body: JSON.stringify(body) });
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
-
 async function sbDelete(table, id) {
-  const res = await fetch(`${API}/${table}?id=eq.${id}`, {
-    method: 'DELETE', headers: { ...HEADERS, 'Prefer': 'return=minimal' }
-  });
+  const res = await fetch(`${API}/${table}?id=eq.${id}`, { method: 'DELETE', headers: { ...HEADERS, 'Prefer': 'return=minimal' } });
   if (!res.ok) throw new Error(await res.text());
 }
 
@@ -406,7 +406,6 @@ async function loadEvents() {
       sbGet('veranstaltungen', 'order=datum.asc'),
       sbGet('helfer', 'order=eingetragen_am.asc')
     ]);
-
     events = evRows.map(r => ({
       id: r.id,
       date: r.datum,
@@ -422,13 +421,11 @@ async function loadEvents() {
       notes: r.bemerkungen || '',
       team: []
     }));
-
-    // Helfer zuordnen
+    // Helfer zuordnen — mit ID für spätere Bearbeitung
     helperRows.forEach(h => {
       const ev = events.find(e => e.id === h.veranstaltung_id);
-      if (ev) ev.team.push({ name: h.name, role: h.aufgabe || 'Helfer:in', confirmed: true });
+      if (ev) ev.team.push({ id: h.id, name: h.name, role: h.aufgabe || 'Helfer:in', confirmed: true });
     });
-
     renderCalendar();
   } catch(err) {
     showToast('Fehler beim Laden – bitte Seite neu laden.');
@@ -476,12 +473,14 @@ function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
     card.className = `event-card type-${ev.type}`;
     card.onclick = () => openDetailModal(ev.id);
     let helpersHtml = ev.team.slice(0,2).map(m=>`<span class="helper-chip">${m.name.split(' ')[0]}</span>`).join('');
+    // Orangene Chips nur anzeigen wenn noch offene Stellen vorhanden
     if (ev.helpSlots > 0 && ev.helpRoles.length > 0) {
       ev.helpRoles.slice(0,2).forEach(r => { helpersHtml += `<span class="helper-chip needs-help">⟳ ${r}</span>`; });
       if (ev.helpRoles.length > 2) helpersHtml += `<span class="helper-chip needs-help">+${ev.helpRoles.length-2} weitere</span>`;
     } else if (ev.helpSlots > 0) {
       helpersHtml += `<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`;
     }
+    // helpSlots === 0 → keine orangenen Chips, alle Stellen besetzt
     card.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">${ev.timeStart}–${ev.timeEnd}</div><div class="event-helpers">${helpersHtml}</div>`;
     cell.appendChild(card);
   });
@@ -544,7 +543,7 @@ function focusHelperInput(roleLabel) {
 }
 
 // ------------------------------------------------------------
-// Helfer eintragen
+// Helfer eintragen (Detail Modal)
 // ------------------------------------------------------------
 async function addHelper() {
   const name = document.getElementById('helperName').value.trim();
@@ -553,7 +552,6 @@ async function addHelper() {
   showLoadingOverlay(true);
   try {
     await sbPost('helfer', { veranstaltung_id: selectedEventId, name, aufgabe: role });
-    // Hilfsstellen reduzieren
     const ev = events.find(e => e.id === selectedEventId);
     if (ev && ev.helpSlots > 0) {
       await sbPatch('veranstaltungen', selectedEventId, { hilfe_stellen: ev.helpSlots - 1 });
@@ -648,7 +646,7 @@ function checkPassword() {
 }
 
 // ------------------------------------------------------------
-// Bearbeiten
+// Bearbeiten — inkl. Helfer verwalten
 // ------------------------------------------------------------
 function openEditModal() {
   const ev = events.find(e => e.id === selectedEventId);
@@ -666,7 +664,80 @@ function openEditModal() {
   document.getElementById('editBookerPhone').value = ev.booker?.phone || '';
   document.getElementById('editHelpRoles').value = (ev.helpRoles || []).join('\n');
   document.getElementById('editNotes').value = ev.notes || '';
+  document.getElementById('editNewHelperName').value = '';
+  document.getElementById('editNewHelperRole').value = '';
+  renderEditHelperList(ev);
   document.getElementById('editEventModal').classList.add('open');
+}
+
+function renderEditHelperList(ev) {
+  const list = document.getElementById('editHelperList');
+  if (!ev.team || ev.team.length === 0) {
+    list.innerHTML = '<div style="font-size:0.82rem;color:var(--ink-light);margin-bottom:8px">Noch keine Helfer:innen eingetragen.</div>';
+    return;
+  }
+  list.innerHTML = ev.team.map((m, idx) => `
+    <div class="team-member-edit">
+      <div class="team-avatar" style="flex-shrink:0">${m.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
+      <input value="${m.name.replace(/"/g,'&quot;')}" id="editHelperName_${idx}" placeholder="Name">
+      <input value="${m.role.replace(/"/g,'&quot;')}" id="editHelperRole_${idx}" placeholder="Aufgabe">
+      <button class="btn-delete-helper" onclick="deleteHelperInEdit('${m.id}', ${idx})" title="Entfernen">×</button>
+    </div>
+  `).join('');
+}
+
+async function deleteHelperInEdit(helperId, idx) {
+  showLoadingOverlay(true);
+  try {
+    await sbDelete('helfer', helperId);
+    const ev = events.find(e => e.id === selectedEventId);
+    await sbPatch('veranstaltungen', selectedEventId, { hilfe_stellen: (ev.helpSlots || 0) + 1 });
+    await loadEvents();
+    openEditModal();
+    showToast('Helfer:in wurde entfernt.');
+  } catch(err) {
+    showToast('Fehler – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+async function addHelperInEdit() {
+  const name = document.getElementById('editNewHelperName').value.trim();
+  const role = document.getElementById('editNewHelperRole').value.trim() || 'Helfer:in';
+  if (!name) { showToast('Bitte Namen eingeben.'); return; }
+  showLoadingOverlay(true);
+  try {
+    await sbPost('helfer', { veranstaltung_id: selectedEventId, name, aufgabe: role });
+    const ev = events.find(e => e.id === selectedEventId);
+    if (ev && ev.helpSlots > 0) {
+      await sbPatch('veranstaltungen', selectedEventId, { hilfe_stellen: ev.helpSlots - 1 });
+    }
+    await loadEvents();
+    openEditModal();
+    showToast(`${name} wurde hinzugefügt.`);
+  } catch(err) {
+    showToast('Fehler – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+async function saveHelperEditsInList() {
+  const ev = events.find(e => e.id === selectedEventId);
+  if (!ev || !ev.team) return;
+  const patches = ev.team.map((m, idx) => {
+    const nameEl = document.getElementById(`editHelperName_${idx}`);
+    const roleEl = document.getElementById(`editHelperRole_${idx}`);
+    if (!nameEl || !roleEl) return null;
+    const newName = nameEl.value.trim();
+    const newRole = roleEl.value.trim();
+    if (newName !== m.name || newRole !== m.role) {
+      return sbPatch('helfer', m.id, { name: newName, aufgabe: newRole });
+    }
+    return null;
+  }).filter(Boolean);
+  if (patches.length > 0) await Promise.all(patches);
 }
 
 async function saveEditedEvent() {
@@ -676,6 +747,7 @@ async function saveEditedEvent() {
   const helpRoles = document.getElementById('editHelpRoles').value.trim().split('\n').map(s=>s.trim()).filter(Boolean);
   showLoadingOverlay(true);
   try {
+    await saveHelperEditsInList();
     await sbPatch('veranstaltungen', selectedEventId, {
       name, datum: date,
       typ: document.getElementById('editType').value,
@@ -708,8 +780,7 @@ async function confirmDelete() {
   if (!ev) return;
   showLoadingOverlay(true);
   try {
-    // Zuerst alle Helfer löschen
-    const helperRes = await fetch(`${API}/helfer?veranstaltung_id=eq.${selectedEventId}`, {
+    await fetch(`${API}/helfer?veranstaltung_id=eq.${selectedEventId}`, {
       method: 'DELETE', headers: { ...HEADERS, 'Prefer': 'return=minimal' }
     });
     await sbDelete('veranstaltungen', selectedEventId);
