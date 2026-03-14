@@ -473,12 +473,17 @@ function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
     card.className = `event-card type-${ev.type}`;
     card.onclick = () => openDetailModal(ev.id);
     let helpersHtml = ev.team.slice(0,2).map(m=>`<span class="helper-chip">${m.name.split(' ')[0]}</span>`).join('');
-    // Orangene Chips nur anzeigen wenn noch offene Stellen vorhanden
-    if (ev.helpSlots > 0 && ev.helpRoles.length > 0) {
-      ev.helpRoles.slice(0,2).forEach(r => { helpersHtml += `<span class="helper-chip needs-help">⟳ ${r}</span>`; });
-      if (ev.helpRoles.length > 2) helpersHtml += `<span class="helper-chip needs-help">+${ev.helpRoles.length-2} weitere</span>`;
-    } else if (ev.helpSlots > 0) {
-      helpersHtml += `<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`;
+    // Nur orangene Chips zeigen wenn helpSlots > 0 (Datenbank-Wert ist die einzige Wahrheit)
+    if (ev.helpSlots > 0) {
+      // Die letzten helpSlots Einträge aus helpRoles nehmen (vorne sind die besetzten)
+      const filledCount = ev.helpRoles.length - ev.helpSlots;
+      const openRoles = ev.helpRoles.slice(Math.max(0, filledCount));
+      if (openRoles.length > 0) {
+        openRoles.slice(0,2).forEach(r => { helpersHtml += `<span class="helper-chip needs-help">⟳ ${r}</span>`; });
+        if (openRoles.length > 2) helpersHtml += `<span class="helper-chip needs-help">+${openRoles.length-2} weitere</span>`;
+      } else {
+        helpersHtml += `<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`;
+      }
     }
     // helpSlots === 0 → keine orangenen Chips, alle Stellen besetzt
     card.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">${ev.timeStart}–${ev.timeEnd}</div><div class="event-helpers">${helpersHtml}</div>`;
@@ -532,7 +537,9 @@ function renderTeam(ev) {
     list.innerHTML += `<div class="team-member"><div class="team-avatar">${m.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div><div style="font-weight:500">${m.name}</div><div class="team-role">${m.role}</div></div></div>`;
   });
   for (let i = 0; i < ev.helpSlots; i++) {
-    const label = (ev.helpRoles && ev.helpRoles[i]) ? ev.helpRoles[i] : 'Offene Stelle';
+    // Von hinten aus helpRoles lesen — vorne sind die bereits besetzten Stellen
+    const filledCount = ev.helpRoles.length - ev.helpSlots;
+    const label = (ev.helpRoles && ev.helpRoles[filledCount + i]) ? ev.helpRoles[filledCount + i] : 'Offene Stelle';
     list.innerHTML += `<div class="help-slot" onclick="focusHelperInput('${label.replace(/'/g,"\\'")}')">＋ ${label} — hier eintragen</div>`;
   }
 }
@@ -681,9 +688,15 @@ function renderEditHelperList(ev) {
       <div class="team-avatar" style="flex-shrink:0">${m.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div>
       <input value="${m.name.replace(/"/g,'&quot;')}" id="editHelperName_${idx}" placeholder="Name">
       <input value="${m.role.replace(/"/g,'&quot;')}" id="editHelperRole_${idx}" placeholder="Aufgabe">
-      <button class="btn-delete-helper" onclick="deleteHelperInEdit('${m.id}', ${idx})" title="Entfernen">×</button>
+      <button class="btn-delete-helper" data-helperid="${m.id}" data-idx="${idx}" title="Entfernen">×</button>
     </div>
   `).join('');
+  // Event-Listener nach dem Rendern setzen — vermeidet UUID-Probleme in onclick-Strings
+  list.querySelectorAll('.btn-delete-helper').forEach(btn => {
+    btn.addEventListener('click', () => {
+      deleteHelperInEdit(btn.dataset.helperid, parseInt(btn.dataset.idx));
+    });
+  });
 }
 
 async function deleteHelperInEdit(helperId, idx) {
