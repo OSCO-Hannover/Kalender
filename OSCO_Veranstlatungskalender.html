@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Open Space — Veranstaltungskalender</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #f5f0e8; --paper: #faf7f2; --ink: #1a1612; --ink-light: #6b6258;
+    --accent: #c84b2f; --accent2: #2d6e4e; --accent3: #4a6fa5;
+    --warn: #d4822a; --border: #d9d0c4; --card: #ffffff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: 'Instrument Sans', sans-serif; min-height: 100vh; }
+
+  header { background: var(--ink); color: var(--paper); padding: 28px 40px 24px; display: flex; align-items: baseline; gap: 24px; border-bottom: 4px solid var(--accent); }
+  header h1 { font-family: 'DM Serif Display', serif; font-size: 2.2rem; letter-spacing: -0.5px; line-height: 1; }
+  header h1 span { color: var(--accent); font-style: italic; }
+  header .subtitle { font-family: 'DM Mono', monospace; font-size: 0.72rem; color: #a09080; letter-spacing: 0.08em; text-transform: uppercase; }
+  .header-nav { margin-left: auto; display: flex; gap: 12px; align-items: center; }
+
+  .btn { padding: 8px 18px; border: none; border-radius: 4px; font-family: 'Instrument Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-primary { background: var(--accent); color: white; }
+  .btn-primary:hover { background: #a83920; }
+  .btn-ghost { background: #fff; color: var(--ink); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--bg); }
+
+  .month-nav { display: flex; align-items: center; gap: 16px; padding: 20px 40px 0; }
+  .month-nav h2 { font-family: 'DM Serif Display', serif; font-size: 1.6rem; min-width: 220px; }
+  .nav-btn { width: 36px; height: 36px; border: 1.5px solid var(--border); background: var(--card); border-radius: 4px; cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+  .nav-btn:hover { border-color: var(--ink); background: var(--ink); color: white; }
+
+  .legend { display: flex; gap: 20px; padding: 12px 40px 16px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: var(--ink-light); font-family: 'DM Mono', monospace; }
+  .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+  .calendar-wrapper { padding: 0 40px 40px; }
+  .calendar-header { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 6px; }
+  .cal-header-day { text-align: center; font-family: 'DM Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light); padding: 6px 0; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+
+  .day-cell { background: var(--card); border: 1.5px solid var(--border); border-radius: 6px; min-height: 130px; padding: 8px; position: relative; transition: border-color 0.15s; }
+  .day-cell:hover { border-color: #b0a898; }
+  .day-cell.today { border-color: var(--accent); border-width: 2px; }
+  .day-cell.other-month { background: #f0ece4; opacity: 0.55; }
+  .day-cell.weekend { background: #faf8f4; }
+
+  .day-num { font-family: 'DM Mono', monospace; font-size: 0.78rem; font-weight: 500; color: var(--ink-light); margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+  .day-num.today-num { color: var(--accent); font-weight: 600; }
+  .add-event-btn { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--border); background: transparent; cursor: pointer; font-size: 0.9rem; display: flex; align-items: center; justify-content: center; color: var(--ink-light); transition: all 0.15s; opacity: 0; }
+  .day-cell:hover .add-event-btn { opacity: 1; }
+  .add-event-btn:hover { background: var(--accent); border-color: var(--accent); color: white; }
+
+  .event-card { border-radius: 4px; padding: 5px 7px; margin-bottom: 4px; cursor: pointer; transition: opacity 0.15s; border-left: 3px solid transparent; }
+  .event-card:hover { opacity: 0.85; }
+  .event-card.type-workshop { background: #e8f0fb; border-left-color: var(--accent3); }
+  .event-card.type-konzert  { background: #fde8e4; border-left-color: var(--accent); }
+  .event-card.type-ausstellung { background: #e8f5ee; border-left-color: var(--accent2); }
+  .event-card.type-markt   { background: #fef3e2; border-left-color: var(--warn); }
+  .event-card.type-sonstiges { background: #f2ece4; border-left-color: #9b8e80; }
+
+  .event-name { font-size: 0.72rem; font-weight: 600; line-height: 1.25; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-meta { font-size: 0.62rem; color: var(--ink-light); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Mono', monospace; }
+  .event-helpers { display: flex; gap: 2px; margin-top: 3px; flex-wrap: wrap; }
+  .helper-chip { font-size: 0.58rem; background: rgba(0,0,0,0.06); color: var(--ink-light); border-radius: 20px; padding: 1px 5px; white-space: nowrap; font-family: 'DM Mono', monospace; }
+  .helper-chip.needs-help { background: #fff0e0; color: var(--warn); border: 1px dashed var(--warn); }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(20,15,10,0.5); z-index: 100; align-items: center; justify-content: center; backdrop-filter: blur(3px); }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--paper); border-radius: 10px; width: 520px; max-width: 95vw; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.25); }
+  .modal-header { padding: 24px 28px 16px; border-bottom: 1.5px solid var(--border); display: flex; justify-content: space-between; align-items: flex-start; }
+  .modal-title { font-family: 'DM Serif Display', serif; font-size: 1.4rem; line-height: 1.2; }
+  .modal-close { background: none; border: none; font-size: 1.4rem; cursor: pointer; color: var(--ink-light); line-height: 1; padding: 2px 6px; }
+  .modal-close:hover { color: var(--ink); }
+  .modal-body { padding: 20px 28px 28px; }
+
+  .detail-type-badge { display: inline-block; font-family: 'DM Mono', monospace; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 10px; border-radius: 20px; margin-bottom: 12px; }
+  .detail-section { margin-bottom: 16px; }
+  .detail-label { font-size: 0.7rem; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-light); margin-bottom: 4px; }
+  .detail-value { font-size: 0.95rem; line-height: 1.45; }
+
+  .team-list { display: flex; flex-direction: column; gap: 6px; }
+  .team-member { display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 6px; background: #f5f0e8; font-size: 0.88rem; }
+  .team-avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--ink); color: white; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 600; flex-shrink: 0; }
+  .team-role { font-size: 0.72rem; color: var(--ink-light); font-family: 'DM Mono', monospace; }
+  .help-slot { border: 1.5px dashed var(--warn); background: #fff8ee; border-radius: 6px; padding: 7px 10px; font-size: 0.85rem; color: var(--warn); display: flex; align-items: center; gap: 8px; cursor: pointer; transition: background 0.15s; }
+  .help-slot:hover { background: #fff0da; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { display: block; font-size: 0.78rem; font-family: 'DM Mono', monospace; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-light); margin-bottom: 5px; }
+  .form-input, .form-select, .form-textarea { width: 100%; padding: 9px 12px; border: 1.5px solid var(--border); border-radius: 5px; background: white; font-family: 'Instrument Sans', sans-serif; font-size: 0.9rem; color: var(--ink); transition: border-color 0.15s; }
+  .form-input:focus, .form-select:focus, .form-textarea:focus { outline: none; border-color: var(--accent3); }
+  .form-textarea { min-height: 70px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-actions { display: flex; gap: 10px; margin-top: 20px; }
+
+  .detail-actions { display: flex; gap: 8px; margin-top: 20px; padding-top: 16px; border-top: 1.5px solid var(--border); }
+  .btn-edit { padding: 8px 16px; border: 1.5px solid var(--accent3); background: transparent; color: var(--accent3); border-radius: 4px; font-family: 'Instrument Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-edit:hover { background: var(--accent3); color: white; }
+  .btn-delete { padding: 8px 16px; border: 1.5px solid #e8d0cc; background: transparent; color: var(--accent); border-radius: 4px; font-family: 'Instrument Sans', sans-serif; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.15s; margin-left: auto; }
+  .btn-delete:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+  .pw-modal { background: var(--paper); border-radius: 10px; width: 360px; max-width: 95vw; padding: 28px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); text-align: center; }
+  .pw-modal h3 { font-family: 'DM Serif Display', serif; font-size: 1.3rem; margin-bottom: 8px; }
+  .pw-modal p { font-size: 0.88rem; color: var(--ink-light); margin-bottom: 18px; }
+  .pw-error { color: var(--accent); font-size: 0.82rem; margin-top: 8px; min-height: 18px; }
+
+  .toast { position: fixed; bottom: 30px; right: 30px; background: var(--ink); color: white; padding: 12px 20px; border-radius: 6px; font-size: 0.88rem; transform: translateY(60px); opacity: 0; transition: all 0.3s; z-index: 999; border-left: 4px solid var(--accent2); }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  #loadingOverlay { display: none; position: fixed; inset: 0; background: rgba(245,240,232,0.75); z-index: 200; align-items: center; justify-content: center; flex-direction: column; gap: 12px; backdrop-filter: blur(2px); }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 800px) {
+    header { padding: 16px 20px; }
+    .month-nav, .legend, .calendar-wrapper { padding-left: 16px; padding-right: 16px; }
+    .day-cell { min-height: 90px; padding: 5px; }
+    .event-name { font-size: 0.65rem; }
+  }
+</style>
+</head>
+<body>
+
+<div id="loadingOverlay">
+  <div class="spinner"></div>
+  <div style="font-family:'DM Mono',monospace;font-size:0.8rem;color:var(--ink-light)">Daten werden geladen…</div>
+</div>
+
+<header>
+  <div>
+    <h1>Open <span>Space</span></h1>
+    <div class="subtitle">Veranstaltungskalender · OSCO Hannover</div>
+  </div>
+  <div class="header-nav">
+    <button class="btn btn-primary" onclick="openNewEventModal()">+ Neue Veranstaltung</button>
+  </div>
+</header>
+
+<div class="month-nav">
+  <button class="nav-btn" onclick="changeMonth(-1)">←</button>
+  <h2 id="monthTitle"></h2>
+  <button class="nav-btn" onclick="changeMonth(1)">→</button>
+  <button class="btn btn-ghost" style="margin-left:12px;font-size:0.82rem;" onclick="goToday()">Heute</button>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#4a6fa5"></div>Workshop</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#c84b2f"></div>Konzert</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2d6e4e"></div>Ausstellung</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d4822a"></div>Markt</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#9b8e80"></div>Sonstiges</div>
+  <div class="legend-item" style="margin-left:12px">
+    <div style="width:22px;height:10px;border:1.5px dashed #d4822a;border-radius:20px"></div>Hilfe gesucht
+  </div>
+</div>
+
+<div class="calendar-wrapper">
+  <div class="calendar-header">
+    <div class="cal-header-day">Mo</div><div class="cal-header-day">Di</div>
+    <div class="cal-header-day">Mi</div><div class="cal-header-day">Do</div>
+    <div class="cal-header-day">Fr</div><div class="cal-header-day">Sa</div>
+    <div class="cal-header-day">So</div>
+  </div>
+  <div class="calendar-grid" id="calendarGrid"></div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detailModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div id="detailBadge" class="detail-type-badge"></div>
+        <div class="modal-title" id="detailTitle"></div>
+        <div style="font-size:0.8rem;color:var(--ink-light);margin-top:4px;font-family:'DM Mono',monospace" id="detailDate"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal('detailModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-section">
+        <div class="detail-label">Beschreibung</div>
+        <div class="detail-value" id="detailDesc"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Uhrzeit</div>
+        <div class="detail-value" id="detailTime"></div>
+      </div>
+      <div class="detail-section" id="detailBookerSection">
+        <div class="detail-label">Buchende Person (extern)</div>
+        <div id="detailBooker" style="display:flex;flex-direction:column;gap:4px;font-size:0.9rem;"></div>
+      </div>
+      <div class="detail-section" id="detailNotesSection">
+        <div class="detail-label">Bemerkungen / Offene Fragen</div>
+        <div class="detail-value" id="detailNotes" style="background:#fffbf2;border:1.5px solid #eedcb0;border-radius:6px;padding:10px 12px;font-size:0.88rem;white-space:pre-wrap;"></div>
+      </div>
+      <div class="detail-section">
+        <div class="detail-label">Team & Helfende</div>
+        <div class="team-list" id="detailTeam"></div>
+      </div>
+      <div style="margin-top:20px;padding-top:16px;border-top:1.5px solid var(--border)">
+        <div class="detail-label" style="margin-bottom:8px">Als Helfer:in eintragen</div>
+        <div style="display:flex;gap:8px">
+          <input class="form-input" id="helperName" placeholder="Dein Name" style="flex:1">
+          <input class="form-input" id="helperRole" placeholder="Aufgabe / Rolle" style="flex:1">
+          <button class="btn btn-primary" onclick="addHelper()">Eintragen</button>
+        </div>
+      </div>
+      <div class="detail-actions">
+        <button class="btn-edit" onclick="requestAuth('edit')">✏️ Bearbeiten</button>
+        <button class="btn-delete" onclick="requestAuth('delete')">🗑 Löschen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- NEW EVENT MODAL -->
+<div class="modal-overlay" id="newEventModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Neue Veranstaltung</div>
+      <button class="modal-close" onclick="closeModal('newEventModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Veranstaltungsname *</label>
+        <input class="form-input" id="newName" placeholder="z.B. Gitarren-Workshop">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Datum *</label>
+          <input class="form-input" id="newDate" type="date">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Typ</label>
+          <select class="form-select" id="newType">
+            <option value="workshop">Workshop</option>
+            <option value="konzert">Konzert</option>
+            <option value="ausstellung">Ausstellung</option>
+            <option value="markt">Markt</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Beginn</label><input class="form-input" id="newTimeStart" type="time" value="14:00"></div>
+        <div class="form-group"><label class="form-label">Ende</label><input class="form-input" id="newTimeEnd" type="time" value="18:00"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-textarea" id="newDesc" placeholder="Kurze Beschreibung…"></textarea></div>
+      <div class="form-group"><label class="form-label">Hauptverantwortliche Person</label><input class="form-input" id="newOrganizer" placeholder="Name"></div>
+      <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
+      <div style="font-size:0.78rem;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.07em;color:var(--ink-light);margin-bottom:10px">Buchende Person (extern)</div>
+      <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="newBookerName" placeholder="Vor- und Nachname"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">E-Mail</label><input class="form-input" id="newBookerEmail" type="email" placeholder="email@beispiel.de"></div>
+        <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="newBookerPhone" placeholder="0176 …"></div>
+      </div>
+      <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
+      <div class="form-group">
+        <label class="form-label">Hilfe gesucht — Aufgaben (eine pro Zeile)</label>
+        <textarea class="form-textarea" id="newHelpRoles" placeholder="z.B.:&#10;Aufbau 8:00 Uhr&#10;Kassenaufsicht" style="min-height:80px"></textarea>
+      </div>
+      <div class="form-group"><label class="form-label">Bemerkungen / Offene Fragen</label><textarea class="form-textarea" id="newNotes" placeholder="Offene Punkte, interne Hinweise…"></textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveNewEvent()" style="flex:1">Veranstaltung speichern</button>
+        <button class="btn btn-ghost" onclick="closeModal('newEventModal')">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT EVENT MODAL -->
+<div class="modal-overlay" id="editEventModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Veranstaltung bearbeiten</div>
+      <button class="modal-close" onclick="closeModal('editEventModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group"><label class="form-label">Veranstaltungsname *</label><input class="form-input" id="editName"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Datum *</label><input class="form-input" id="editDate" type="date"></div>
+        <div class="form-group">
+          <label class="form-label">Typ</label>
+          <select class="form-select" id="editType">
+            <option value="workshop">Workshop</option><option value="konzert">Konzert</option>
+            <option value="ausstellung">Ausstellung</option><option value="markt">Markt</option>
+            <option value="sonstiges">Sonstiges</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Beginn</label><input class="form-input" id="editTimeStart" type="time"></div>
+        <div class="form-group"><label class="form-label">Ende</label><input class="form-input" id="editTimeEnd" type="time"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Beschreibung</label><textarea class="form-textarea" id="editDesc"></textarea></div>
+      <div class="form-group"><label class="form-label">Hauptverantwortliche Person</label><input class="form-input" id="editOrganizer"></div>
+      <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
+      <div style="font-size:0.78rem;font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:0.07em;color:var(--ink-light);margin-bottom:10px">Buchende Person (extern)</div>
+      <div class="form-group"><label class="form-label">Name</label><input class="form-input" id="editBookerName"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">E-Mail</label><input class="form-input" id="editBookerEmail" type="email"></div>
+        <div class="form-group"><label class="form-label">Telefon</label><input class="form-input" id="editBookerPhone"></div>
+      </div>
+      <div style="border-top:1.5px solid var(--border);margin:16px 0 14px;"></div>
+      <div class="form-group"><label class="form-label">Hilfe gesucht — Aufgaben (eine pro Zeile)</label><textarea class="form-textarea" id="editHelpRoles" style="min-height:80px"></textarea></div>
+      <div class="form-group"><label class="form-label">Bemerkungen / Offene Fragen</label><textarea class="form-textarea" id="editNotes"></textarea></div>
+      <div class="form-actions">
+        <button class="btn btn-primary" onclick="saveEditedEvent()" style="flex:1">Änderungen speichern</button>
+        <button class="btn btn-ghost" onclick="closeModal('editEventModal')">Abbrechen</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- PASSWORD MODAL -->
+<div class="modal-overlay" id="pwModal">
+  <div class="pw-modal">
+    <h3 id="pwTitle">Passwort erforderlich</h3>
+    <p id="pwSubtitle">Bitte gebt das Team-Passwort ein.</p>
+    <input class="form-input" id="pwInput" type="password" placeholder="Passwort" style="text-align:center;letter-spacing:0.15em" onkeydown="if(event.key==='Enter')checkPassword()">
+    <div class="pw-error" id="pwError"></div>
+    <div class="form-actions" style="margin-top:16px">
+      <button class="btn btn-primary" onclick="checkPassword()" style="flex:1">Bestätigen</button>
+      <button class="btn btn-ghost" onclick="closeModal('pwModal')">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+//  OSCO Hannover – Kalender · Supabase Edition
+//  Alle Daten werden direkt in Supabase gespeichert.
+//  Kein Google-Konto, kein Apps Script nötig.
+// ============================================================
+const SUPABASE_URL = 'https://mwpgdwtfgebzclaacvfn.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_-ewEC5dX101HMjaPmnXsrg_NYwzWBIE';
+// ============================================================
+//  Passwort für Bearbeiten & Löschen.
+//  Ändert diesen Wert und ladet die Datei neu auf GitHub hoch:
+// ============================================================
+const ADMIN_PASSWORD = 'OSCO0815';
+// ============================================================
+
+const API = `${SUPABASE_URL}/rest/v1`;
+const HEADERS = {
+  'apikey': SUPABASE_KEY,
+  'Authorization': `Bearer ${SUPABASE_KEY}`,
+  'Content-Type': 'application/json',
+  'Prefer': 'return=representation'
+};
+
+const MONTHS = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+const today = new Date();
+let currentYear = today.getFullYear();
+let currentMonth = today.getMonth();
+let selectedEventId = null;
+let events = [];
+let verifiedPassword = null;
+let pendingAuthAction = null;
+
+// ------------------------------------------------------------
+// Supabase API Hilfsfunktionen
+// ------------------------------------------------------------
+async function sbGet(table, params = '') {
+  const res = await fetch(`${API}/${table}?${params}`, { headers: HEADERS });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function sbPost(table, body) {
+  const res = await fetch(`${API}/${table}`, {
+    method: 'POST', headers: HEADERS, body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function sbPatch(table, id, body) {
+  const res = await fetch(`${API}/${table}?id=eq.${id}`, {
+    method: 'PATCH', headers: HEADERS, body: JSON.stringify(body)
+  });
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+async function sbDelete(table, id) {
+  const res = await fetch(`${API}/${table}?id=eq.${id}`, {
+    method: 'DELETE', headers: { ...HEADERS, 'Prefer': 'return=minimal' }
+  });
+  if (!res.ok) throw new Error(await res.text());
+}
+
+// ------------------------------------------------------------
+// Daten laden
+// ------------------------------------------------------------
+async function loadEvents() {
+  showLoadingOverlay(true);
+  try {
+    const [evRows, helperRows] = await Promise.all([
+      sbGet('veranstaltungen', 'order=datum.asc'),
+      sbGet('helfer', 'order=eingetragen_am.asc')
+    ]);
+
+    events = evRows.map(r => ({
+      id: r.id,
+      date: r.datum,
+      name: r.name,
+      type: r.typ || 'sonstiges',
+      timeStart: r.beginn || '',
+      timeEnd: r.ende || '',
+      desc: r.beschreibung || '',
+      organizer: r.verantwortlich || '',
+      helpSlots: r.hilfe_stellen || 0,
+      helpRoles: r.hilfe_aufgaben ? r.hilfe_aufgaben.split('|').filter(Boolean) : [],
+      booker: { name: r.buchende_person || '', email: r.buchende_email || '', phone: r.buchende_telefon || '' },
+      notes: r.bemerkungen || '',
+      team: []
+    }));
+
+    // Helfer zuordnen
+    helperRows.forEach(h => {
+      const ev = events.find(e => e.id === h.veranstaltung_id);
+      if (ev) ev.team.push({ name: h.name, role: h.aufgabe || 'Helfer:in', confirmed: true });
+    });
+
+    renderCalendar();
+  } catch(err) {
+    showToast('Fehler beim Laden – bitte Seite neu laden.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+// ------------------------------------------------------------
+// Kalender rendern
+// ------------------------------------------------------------
+function fmtDate(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function getEventsForDate(dateStr) {
+  return events.filter(e => e.date === dateStr);
+}
+
+function renderCalendar() {
+  document.getElementById('monthTitle').textContent = `${MONTHS[currentMonth]} ${currentYear}`;
+  const grid = document.getElementById('calendarGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(currentYear, currentMonth, 1);
+  const lastDay = new Date(currentYear, currentMonth + 1, 0);
+  let startDow = firstDay.getDay();
+  startDow = startDow === 0 ? 6 : startDow - 1;
+  const todayStr = fmtDate(today.getFullYear(), today.getMonth(), today.getDate());
+  const prevLast = new Date(currentYear, currentMonth, 0).getDate();
+  for (let i = startDow - 1; i >= 0; i--) grid.appendChild(buildCell(prevLast - i, fmtDate(currentYear, currentMonth - 1, prevLast - i), true));
+  for (let d = 1; d <= lastDay.getDate(); d++) {
+    const dateStr = fmtDate(currentYear, currentMonth, d);
+    const dow = new Date(currentYear, currentMonth, d).getDay();
+    grid.appendChild(buildCell(d, dateStr, false, dateStr === todayStr, dow === 0 || dow === 6));
+  }
+  const remaining = (7 - ((startDow + lastDay.getDate()) % 7)) % 7;
+  for (let d = 1; d <= remaining; d++) grid.appendChild(buildCell(d, fmtDate(currentYear, currentMonth + 1, d), true));
+}
+
+function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
+  const cell = document.createElement('div');
+  cell.className = 'day-cell' + (otherMonth?' other-month':'') + (isToday?' today':'') + (isWeekend?' weekend':'');
+  cell.innerHTML = `<div class="day-num ${isToday?'today-num':''}">${dayNum}<button class="add-event-btn" onclick="openNewEventModalDate('${dateStr}')">+</button></div>`;
+  getEventsForDate(dateStr).forEach(ev => {
+    const card = document.createElement('div');
+    card.className = `event-card type-${ev.type}`;
+    card.onclick = () => openDetailModal(ev.id);
+    let helpersHtml = ev.team.slice(0,2).map(m=>`<span class="helper-chip">${m.name.split(' ')[0]}</span>`).join('');
+    if (ev.helpSlots > 0 && ev.helpRoles.length > 0) {
+      ev.helpRoles.slice(0,2).forEach(r => { helpersHtml += `<span class="helper-chip needs-help">⟳ ${r}</span>`; });
+      if (ev.helpRoles.length > 2) helpersHtml += `<span class="helper-chip needs-help">+${ev.helpRoles.length-2} weitere</span>`;
+    } else if (ev.helpSlots > 0) {
+      helpersHtml += `<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`;
+    }
+    card.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">${ev.timeStart}–${ev.timeEnd}</div><div class="event-helpers">${helpersHtml}</div>`;
+    cell.appendChild(card);
+  });
+  return cell;
+}
+
+// ------------------------------------------------------------
+// Detail Modal
+// ------------------------------------------------------------
+function openDetailModal(id) {
+  const ev = events.find(e => e.id === id);
+  if (!ev) return;
+  selectedEventId = id;
+  const typeLabels = {workshop:'Workshop',konzert:'Konzert',ausstellung:'Ausstellung',markt:'Markt',sonstiges:'Sonstiges'};
+  const typeColors = {workshop:'#e8f0fb;color:#4a6fa5',konzert:'#fde8e4;color:#c84b2f',ausstellung:'#e8f5ee;color:#2d6e4e',markt:'#fef3e2;color:#d4822a',sonstiges:'#f2ece4;color:#9b8e80'};
+  document.getElementById('detailBadge').textContent = typeLabels[ev.type];
+  document.getElementById('detailBadge').style.cssText = `background:${typeColors[ev.type]};`;
+  document.getElementById('detailTitle').textContent = ev.name;
+  const d = new Date(ev.date + 'T12:00:00');
+  document.getElementById('detailDate').textContent = d.toLocaleDateString('de-DE', {weekday:'long',year:'numeric',month:'long',day:'numeric'});
+  document.getElementById('detailTime').textContent = `${ev.timeStart} – ${ev.timeEnd} Uhr`;
+  document.getElementById('detailDesc').textContent = ev.desc || '–';
+  const booker = ev.booker || {};
+  const bookerSection = document.getElementById('detailBookerSection');
+  if (booker.name || booker.email || booker.phone) {
+    bookerSection.style.display = '';
+    document.getElementById('detailBooker').innerHTML =
+      `${booker.name?`<span style="font-weight:600">${booker.name}</span>`:''}
+       ${booker.email?`<a href="mailto:${booker.email}" style="color:var(--accent3);text-decoration:none;font-family:'DM Mono',monospace;font-size:0.82rem">✉ ${booker.email}</a>`:''}
+       ${booker.phone?`<span style="font-family:'DM Mono',monospace;font-size:0.82rem;color:var(--ink-light)">☎ ${booker.phone}</span>`:''}`;
+  } else { bookerSection.style.display = 'none'; }
+  const notesSection = document.getElementById('detailNotesSection');
+  if (ev.notes && ev.notes.trim()) { notesSection.style.display=''; document.getElementById('detailNotes').textContent = ev.notes; }
+  else { notesSection.style.display = 'none'; }
+  renderTeam(ev);
+  document.getElementById('helperName').value = '';
+  document.getElementById('helperRole').value = '';
+  document.getElementById('detailModal').classList.add('open');
+}
+
+function renderTeam(ev) {
+  const list = document.getElementById('detailTeam');
+  list.innerHTML = '';
+  if (ev.team.length === 0 && ev.helpSlots === 0) {
+    list.innerHTML = '<div style="font-size:0.85rem;color:var(--ink-light)">Noch keine Personen eingetragen.</div>';
+    return;
+  }
+  ev.team.forEach(m => {
+    list.innerHTML += `<div class="team-member"><div class="team-avatar">${m.name.split(' ').map(w=>w[0]).join('').slice(0,2)}</div><div><div style="font-weight:500">${m.name}</div><div class="team-role">${m.role}</div></div></div>`;
+  });
+  for (let i = 0; i < ev.helpSlots; i++) {
+    const label = (ev.helpRoles && ev.helpRoles[i]) ? ev.helpRoles[i] : 'Offene Stelle';
+    list.innerHTML += `<div class="help-slot" onclick="focusHelperInput('${label.replace(/'/g,"\\'")}')">＋ ${label} — hier eintragen</div>`;
+  }
+}
+
+function focusHelperInput(roleLabel) {
+  if (roleLabel && roleLabel !== 'Offene Stelle') document.getElementById('helperRole').value = roleLabel;
+  document.getElementById('helperName').focus();
+}
+
+// ------------------------------------------------------------
+// Helfer eintragen
+// ------------------------------------------------------------
+async function addHelper() {
+  const name = document.getElementById('helperName').value.trim();
+  const role = document.getElementById('helperRole').value.trim() || 'Helfer:in';
+  if (!name) { showToast('Bitte Namen eingeben.'); return; }
+  showLoadingOverlay(true);
+  try {
+    await sbPost('helfer', { veranstaltung_id: selectedEventId, name, aufgabe: role });
+    // Hilfsstellen reduzieren
+    const ev = events.find(e => e.id === selectedEventId);
+    if (ev && ev.helpSlots > 0) {
+      await sbPatch('veranstaltungen', selectedEventId, { hilfe_stellen: ev.helpSlots - 1 });
+    }
+    await loadEvents();
+    openDetailModal(selectedEventId);
+    showToast(`${name} wurde eingetragen!`);
+  } catch(err) {
+    showToast('Fehler – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+  document.getElementById('helperName').value = '';
+  document.getElementById('helperRole').value = '';
+}
+
+// ------------------------------------------------------------
+// Neue Veranstaltung speichern
+// ------------------------------------------------------------
+function openNewEventModal() {
+  const t = new Date();
+  document.getElementById('newDate').value = fmtDate(t.getFullYear(), t.getMonth(), t.getDate());
+  document.getElementById('newEventModal').classList.add('open');
+}
+function openNewEventModalDate(dateStr) {
+  document.getElementById('newDate').value = dateStr;
+  document.getElementById('newEventModal').classList.add('open');
+}
+
+async function saveNewEvent() {
+  const name = document.getElementById('newName').value.trim();
+  const date = document.getElementById('newDate').value;
+  if (!name || !date) { showToast('Bitte Name und Datum angeben.'); return; }
+  const helpRoles = document.getElementById('newHelpRoles').value.trim().split('\n').map(s=>s.trim()).filter(Boolean);
+  showLoadingOverlay(true);
+  try {
+    await sbPost('veranstaltungen', {
+      name, datum: date,
+      typ: document.getElementById('newType').value,
+      beginn: document.getElementById('newTimeStart').value,
+      ende: document.getElementById('newTimeEnd').value,
+      beschreibung: document.getElementById('newDesc').value.trim(),
+      verantwortlich: document.getElementById('newOrganizer').value.trim(),
+      hilfe_stellen: helpRoles.length,
+      hilfe_aufgaben: helpRoles.join('|'),
+      buchende_person: document.getElementById('newBookerName').value.trim(),
+      buchende_email: document.getElementById('newBookerEmail').value.trim(),
+      buchende_telefon: document.getElementById('newBookerPhone').value.trim(),
+      bemerkungen: document.getElementById('newNotes').value.trim()
+    });
+    const d = new Date(date + 'T12:00:00');
+    currentYear = d.getFullYear(); currentMonth = d.getMonth();
+    await loadEvents();
+    closeModal('newEventModal');
+    showToast(`„${name}" wurde gespeichert!`);
+    ['newName','newDesc','newOrganizer','newBookerName','newBookerEmail','newBookerPhone','newHelpRoles','newNotes'].forEach(id => document.getElementById(id).value = '');
+  } catch(err) {
+    showToast('Fehler beim Speichern – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+// ------------------------------------------------------------
+// Passwortschutz
+// ------------------------------------------------------------
+function requestAuth(action) {
+  pendingAuthAction = action;
+  document.getElementById('pwInput').value = '';
+  document.getElementById('pwError').textContent = '';
+  document.getElementById('pwTitle').textContent = action === 'delete' ? 'Termin löschen?' : 'Termin bearbeiten';
+  document.getElementById('pwSubtitle').textContent = action === 'delete'
+    ? 'Bitte gebt das Team-Passwort ein, um diesen Termin zu löschen.'
+    : 'Bitte gebt das Team-Passwort ein, um diesen Termin zu bearbeiten.';
+  document.getElementById('pwModal').classList.add('open');
+  setTimeout(() => document.getElementById('pwInput').focus(), 100);
+}
+
+function checkPassword() {
+  const pw = document.getElementById('pwInput').value;
+  if (pw === ADMIN_PASSWORD) {
+    verifiedPassword = pw;
+    closeModal('pwModal');
+    if (pendingAuthAction === 'delete') confirmDelete();
+    if (pendingAuthAction === 'edit') openEditModal();
+    pendingAuthAction = null;
+  } else {
+    document.getElementById('pwError').textContent = '❌ Falsches Passwort – bitte nochmal versuchen.';
+    document.getElementById('pwInput').value = '';
+    document.getElementById('pwInput').focus();
+  }
+}
+
+// ------------------------------------------------------------
+// Bearbeiten
+// ------------------------------------------------------------
+function openEditModal() {
+  const ev = events.find(e => e.id === selectedEventId);
+  if (!ev) return;
+  closeModal('detailModal');
+  document.getElementById('editName').value = ev.name || '';
+  document.getElementById('editDate').value = ev.date || '';
+  document.getElementById('editType').value = ev.type || 'sonstiges';
+  document.getElementById('editTimeStart').value = ev.timeStart || '';
+  document.getElementById('editTimeEnd').value = ev.timeEnd || '';
+  document.getElementById('editDesc').value = ev.desc || '';
+  document.getElementById('editOrganizer').value = ev.organizer || '';
+  document.getElementById('editBookerName').value = ev.booker?.name || '';
+  document.getElementById('editBookerEmail').value = ev.booker?.email || '';
+  document.getElementById('editBookerPhone').value = ev.booker?.phone || '';
+  document.getElementById('editHelpRoles').value = (ev.helpRoles || []).join('\n');
+  document.getElementById('editNotes').value = ev.notes || '';
+  document.getElementById('editEventModal').classList.add('open');
+}
+
+async function saveEditedEvent() {
+  const name = document.getElementById('editName').value.trim();
+  const date = document.getElementById('editDate').value;
+  if (!name || !date) { showToast('Bitte Name und Datum angeben.'); return; }
+  const helpRoles = document.getElementById('editHelpRoles').value.trim().split('\n').map(s=>s.trim()).filter(Boolean);
+  showLoadingOverlay(true);
+  try {
+    await sbPatch('veranstaltungen', selectedEventId, {
+      name, datum: date,
+      typ: document.getElementById('editType').value,
+      beginn: document.getElementById('editTimeStart').value,
+      ende: document.getElementById('editTimeEnd').value,
+      beschreibung: document.getElementById('editDesc').value.trim(),
+      verantwortlich: document.getElementById('editOrganizer').value.trim(),
+      hilfe_stellen: helpRoles.length,
+      hilfe_aufgaben: helpRoles.join('|'),
+      buchende_person: document.getElementById('editBookerName').value.trim(),
+      buchende_email: document.getElementById('editBookerEmail').value.trim(),
+      buchende_telefon: document.getElementById('editBookerPhone').value.trim(),
+      bemerkungen: document.getElementById('editNotes').value.trim()
+    });
+    await loadEvents();
+    closeModal('editEventModal');
+    showToast(`„${name}" wurde aktualisiert!`);
+  } catch(err) {
+    showToast('Fehler beim Speichern – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+// ------------------------------------------------------------
+// Löschen
+// ------------------------------------------------------------
+async function confirmDelete() {
+  const ev = events.find(e => e.id === selectedEventId);
+  if (!ev) return;
+  showLoadingOverlay(true);
+  try {
+    // Zuerst alle Helfer löschen
+    const helperRes = await fetch(`${API}/helfer?veranstaltung_id=eq.${selectedEventId}`, {
+      method: 'DELETE', headers: { ...HEADERS, 'Prefer': 'return=minimal' }
+    });
+    await sbDelete('veranstaltungen', selectedEventId);
+    await loadEvents();
+    closeModal('detailModal');
+    showToast(`„${ev.name}" wurde gelöscht.`);
+  } catch(err) {
+    showToast('Fehler beim Löschen – bitte nochmal versuchen.');
+    console.error(err);
+  }
+  showLoadingOverlay(false);
+}
+
+// ------------------------------------------------------------
+// Hilfsfunktionen
+// ------------------------------------------------------------
+function changeMonth(dir) {
+  currentMonth += dir;
+  if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+  if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+  renderCalendar();
+}
+function goToday() { currentYear = today.getFullYear(); currentMonth = today.getMonth(); renderCalendar(); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function showLoadingOverlay(show) { document.getElementById('loadingOverlay').style.display = show ? 'flex' : 'none'; }
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+document.querySelectorAll('.modal-overlay').forEach(el => {
+  el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+loadEvents();
+</script>
+</body>
+</html>
