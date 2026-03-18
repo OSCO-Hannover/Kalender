@@ -60,7 +60,7 @@
   .event-card.type-markt   { background: #fef3e2; border-left-color: var(--warn); }
   .event-card.type-sonstiges { background: #f2ece4; border-left-color: #9b8e80; }
 
-  .event-name { font-size: 0.72rem; font-weight: 600; line-height: 1.25; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .event-name { font-size: 0.72rem; font-weight: 600; line-height: 1.25; color: var(--ink); overflow: hidden; }
   .event-meta { font-size: 0.62rem; color: var(--ink-light); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: 'DM Mono', monospace; }
   .event-helpers { display: flex; gap: 2px; margin-top: 3px; flex-wrap: wrap; }
   .helper-chip { font-size: 0.58rem; background: rgba(0,0,0,0.06); color: var(--ink-light); border-radius: 20px; padding: 1px 5px; white-space: nowrap; font-family: 'DM Mono', monospace; }
@@ -472,20 +472,24 @@ function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
     const card = document.createElement('div');
     card.className = `event-card type-${ev.type}`;
     card.onclick = () => openDetailModal(ev.id);
-    let helpersHtml = ev.team.slice(0,2).map(m=>`<span class="helper-chip">${m.name.split(' ')[0]}</span>`).join('');
-    // Nur orangene Chips zeigen wenn helpSlots > 0 (Datenbank-Wert ist die einzige Wahrheit)
+    const MAX_CHIPS = 7;
+    let allChips = ev.team.map(m => `<span class="helper-chip">${m.name.split(' ')[0]}</span>`);
     if (ev.helpSlots > 0) {
-      // Die letzten helpSlots Einträge aus helpRoles nehmen (vorne sind die besetzten)
       const filledCount = ev.helpRoles.length - ev.helpSlots;
       const openRoles = ev.helpRoles.slice(Math.max(0, filledCount));
       if (openRoles.length > 0) {
-        openRoles.slice(0,2).forEach(r => { helpersHtml += `<span class="helper-chip needs-help">⟳ ${r}</span>`; });
-        if (openRoles.length > 2) helpersHtml += `<span class="helper-chip needs-help">+${openRoles.length-2} weitere</span>`;
+        openRoles.forEach(r => { allChips.push(`<span class="helper-chip needs-help">⟳ ${r}</span>`); });
       } else {
-        helpersHtml += `<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`;
+        allChips.push(`<span class="helper-chip needs-help">+${ev.helpSlots} Stelle(n) frei</span>`);
       }
     }
-    // helpSlots === 0 → keine orangenen Chips, alle Stellen besetzt
+    let helpersHtml = '';
+    if (allChips.length <= MAX_CHIPS) {
+      helpersHtml = allChips.join('');
+    } else {
+      helpersHtml = allChips.slice(0, MAX_CHIPS).join('') +
+        `<span class="helper-chip needs-help">+${allChips.length - MAX_CHIPS} weitere</span>`;
+    }
     card.innerHTML = `<div class="event-name">${ev.name}</div><div class="event-meta">${ev.timeStart}–${ev.timeEnd}</div><div class="event-helpers">${helpersHtml}</div>`;
     cell.appendChild(card);
   });
