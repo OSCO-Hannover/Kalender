@@ -472,7 +472,7 @@ function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
     const card = document.createElement('div');
     card.className = `event-card type-${ev.type}`;
     card.onclick = () => openDetailModal(ev.id);
-    const MAX_CHIPS = 7;
+    const MAX_CHIPS = 10;
     let allChips = ev.team.map(m => `<span class="helper-chip">${m.name.split(' ')[0]}</span>`);
     if (ev.helpSlots > 0) {
       const filledCount = ev.helpRoles.length - ev.helpSlots;
