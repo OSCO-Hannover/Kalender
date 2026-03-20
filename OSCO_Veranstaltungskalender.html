@@ -353,7 +353,8 @@
 // ============================================================
 const SUPABASE_URL = 'https://mwpgdwtfgebzclaacvfn.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_-ewEC5dX101HMjaPmnXsrg_NYwzWBIE';
-const ADMIN_PASSWORD = 'OSCO0815';
+// Passwörter werden sicher in Supabase gespeichert – nicht hier!
+// Ändern über: Supabase → Table Editor → Tabelle "einstellungen"
 // ============================================================
 
 const API = `${SUPABASE_URL}/rest/v1`;
@@ -472,7 +473,7 @@ function buildCell(dayNum, dateStr, otherMonth, isToday, isWeekend) {
     const card = document.createElement('div');
     card.className = `event-card type-${ev.type}`;
     card.onclick = () => openDetailModal(ev.id);
-    const MAX_CHIPS = 10;
+    const MAX_CHIPS = 7;
     let allChips = ev.team.map(m => `<span class="helper-chip">${m.name.split(' ')[0]}</span>`);
     if (ev.helpSlots > 0) {
       const filledCount = ev.helpRoles.length - ev.helpSlots;
@@ -627,7 +628,7 @@ async function saveNewEvent() {
 }
 
 // ------------------------------------------------------------
-// Passwortschutz
+// Passwortschutz – Prüfung erfolgt in Supabase, nicht im Browser
 // ------------------------------------------------------------
 function requestAuth(action) {
   pendingAuthAction = action;
@@ -635,24 +636,47 @@ function requestAuth(action) {
   document.getElementById('pwError').textContent = '';
   document.getElementById('pwTitle').textContent = action === 'delete' ? 'Termin löschen?' : 'Termin bearbeiten';
   document.getElementById('pwSubtitle').textContent = action === 'delete'
-    ? 'Bitte gebt das Team-Passwort ein, um diesen Termin zu löschen.'
-    : 'Bitte gebt das Team-Passwort ein, um diesen Termin zu bearbeiten.';
+    ? 'Lösch-Passwort eingeben.'
+    : 'Bearbeitungs-Passwort eingeben.';
   document.getElementById('pwModal').classList.add('open');
   setTimeout(() => document.getElementById('pwInput').focus(), 100);
 }
 
-function checkPassword() {
-  const pw = document.getElementById('pwInput').value;
-  if (pw === ADMIN_PASSWORD) {
-    verifiedPassword = pw;
-    closeModal('pwModal');
-    if (pendingAuthAction === 'delete') confirmDelete();
-    if (pendingAuthAction === 'edit') openEditModal();
-    pendingAuthAction = null;
-  } else {
-    document.getElementById('pwError').textContent = '❌ Falsches Passwort – bitte nochmal versuchen.';
-    document.getElementById('pwInput').value = '';
-    document.getElementById('pwInput').focus();
+async function checkPassword() {
+  const pw = document.getElementById('pwInput').value.trim();
+  if (!pw) return;
+
+  // Richtigen Schlüssel je nach Aktion bestimmen
+  const schluessel = pendingAuthAction === 'delete'
+    ? 'passwort_loeschen'
+    : 'passwort_bearbeiten';
+
+  showLoadingOverlay(true);
+  document.getElementById('pwModal').classList.remove('open');
+
+  try {
+    // Passwort aus Supabase laden und vergleichen
+    const rows = await sbGet('einstellungen', `schluessel=eq.${schluessel}&select=wert`);
+    const gespeichert = rows && rows[0] ? rows[0].wert : null;
+
+    if (gespeichert && pw === gespeichert) {
+      verifiedPassword = pw;
+      showLoadingOverlay(false);
+      if (pendingAuthAction === 'delete') confirmDelete();
+      if (pendingAuthAction === 'edit') openEditModal();
+      pendingAuthAction = null;
+    } else {
+      showLoadingOverlay(false);
+      document.getElementById('pwError').textContent = '❌ Falsches Passwort – bitte nochmal versuchen.';
+      document.getElementById('pwInput').value = '';
+      document.getElementById('pwModal').classList.add('open');
+      setTimeout(() => document.getElementById('pwInput').focus(), 100);
+    }
+  } catch(err) {
+    showLoadingOverlay(false);
+    document.getElementById('pwError').textContent = '⚠️ Verbindungsfehler – bitte nochmal versuchen.';
+    document.getElementById('pwModal').classList.add('open');
+    console.error(err);
   }
 }
 
