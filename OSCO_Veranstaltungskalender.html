@@ -10,6 +10,16 @@
     --bg: #f5f0e8; --paper: #faf7f2; --ink: #000000; --ink-light: #6b6258;
     --accent: #c84b2f; --accent2: #2d6e4e; --accent3: #4a6fa5;
     --warn: #d4822a; --border: #d9d0c4; --card: #ffffff;
+
+    /* ═══════════════════════════════════════════════════════════
+       KONFIGURATION — hier könnt ihr Einstellungen anpassen:
+       ═══════════════════════════════════════════════════════════
+       Mindestbreite einer Kalenderspalte.
+       Bei schmalen Bildschirmen scrollt der Kalender horizontal,
+       sobald 7 Spalten nicht mehr in --min-cell-width passen.
+       Empfohlene Werte: 80px (sehr kompakt) bis 160px (großzügig)
+       Standard: 120px ≈ ca. 20 Zeichen Breite                    */
+    --min-cell-width: 120px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--ink); font-family: 'Instrument Sans', sans-serif; min-height: 100vh; }
@@ -35,12 +45,14 @@
   .legend-item { display: flex; align-items: center; gap: 7px; font-size: 0.78rem; color: var(--ink-light); font-family: 'DM Mono', monospace; }
   .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
 
-  .calendar-wrapper { padding: 0 40px 40px; }
+  .calendar-wrapper { padding: 0 40px 40px; overflow-x: auto; }
 
-  /* FIX 1: minmax(0,1fr) verhindert Spaltenausdehnung durch langen Inhalt */
-  .calendar-header { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-bottom: 6px; }
+  /* Mindestbreite über --min-cell-width steuerbar (ganz oben in :root).
+     Bei zu schmalen Bildschirmen scrollt der Kalender horizontal statt
+     die Spalten zu zerquetschen. */
+  .calendar-header { display: grid; grid-template-columns: repeat(7, minmax(var(--min-cell-width), 1fr)); gap: 6px; margin-bottom: 6px; min-width: calc(7 * var(--min-cell-width) + 6 * 6px); }
   .cal-header-day { text-align: center; font-family: 'DM Mono', monospace; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.1em; color: var(--ink-light); padding: 6px 0; }
-  .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, minmax(var(--min-cell-width), 1fr)); gap: 6px; min-width: calc(7 * var(--min-cell-width) + 6 * 6px); }
 
   .day-cell { background: var(--card); border: 1.5px solid var(--border); border-radius: 6px; min-height: 130px; padding: 8px; position: relative; transition: border-color 0.15s; min-width: 0; overflow: hidden; }
   .day-cell:hover { border-color: #b0a898; }
